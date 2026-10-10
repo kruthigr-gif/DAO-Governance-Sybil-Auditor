@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DAO Sybil Attack Detection | GNN Security Audit</title>
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Vis.js Network Visualization Library -->
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Navigation Header -->
+        <header class="header">
+            <div class="brand">
+                <div class="logo-icon">🛡️</div>
+                <div class="brand-text">
+                    <h1>DAO Governance Sybil Auditor</h1>
+                    <span class="subtitle">Powered by Graph Attention Networks (GAT)</span>
+                </div>
+            </div>
+
+            <div class="header-status">
+                <div class="health-badge" id="health-badge">
+                    <span class="health-label">DAO Health Index</span>
+                    <span class="health-value" id="health-value">--%</span>
+                </div>
+                <button class="btn btn-primary" onclick="loadAuditSummary(); loadGraphData();">
+                    <span class="icon">🔄</span> Refresh Audit
+                </button>
+            </div>
+        </header>
+
+        <!-- KPI Metrics Grid -->
+        <section class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-title">Audited Voters</div>
+                <div class="kpi-value" id="kpi-voters">--</div>
+                <div class="kpi-sub" id="kpi-vp">-- Total Tokens</div>
+            </div>
+
+            <div class="kpi-card danger">
+                <div class="kpi-title">Flagged Sybil Accounts</div>
+                <div class="kpi-value" id="kpi-sybils">--</div>
+                <div class="kpi-sub" id="kpi-compromised-vp">-- Tokens Compromised</div>
+            </div>
+
+            <div class="kpi-card warning">
+                <div class="kpi-title">Compromised Voting Power</div>
+                <div class="kpi-value" id="kpi-vp-percent">--%</div>
+                <div class="kpi-sub">High & Critical Risk Tier</div>
+            </div>
+
+            <div class="kpi-card success">
+                <div class="kpi-title">GAT Model ROC-AUC</div>
+                <div class="kpi-value" id="kpi-roc-auc">--</div>
+                <div class="kpi-sub">Multi-Head Graph Attention</div>
+            </div>
+        </section>
+
+        <!-- Main Content Area: Graph Canvas + Sidebar Audit Panel -->
+        <main class="main-layout">
+            <!-- Left Panel: Interactive Graph Canvas -->
+            <section class="card graph-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <h2>Governance Co-voting Network</h2>
+                        <span class="badge">Graph Representation</span>
+                    </div>
+
+                    <!-- Risk Filters -->
+                    <div class="filter-group">
+                        <span class="filter-label">Filter Risk:</span>
+                        <button class="filter-btn active" data-risk="0.0" onclick="filterRisk(0.0, this)">All</button>
+                        <button class="filter-btn low" data-risk="0.01" onclick="filterRisk(0.0, this)">Low</button>
+                        <button class="filter-btn medium" data-risk="0.30" onclick="filterRisk(0.30, this)">Medium</button>
+                        <button class="filter-btn high" data-risk="0.60" onclick="filterRisk(0.60, this)">High</button>
+                        <button class="filter-btn critical" data-risk="0.85" onclick="filterRisk(0.85, this)">Critical Sybil</button>
+                    </div>
+                </div>
+
+                <div class="graph-container">
+                    <div id="network-canvas"></div>
+
+                    <!-- Graph Overlay Legend -->
+                    <div class="graph-legend">
+                        <div class="legend-item"><span class="dot low"></span> Low Risk (&lt;0.30)</div>
+                        <div class="legend-item"><span class="dot medium"></span> Medium (0.30-0.60)</div>
+                        <div class="legend-item"><span class="dot high"></span> High (0.60-0.85)</div>
+                        <div class="legend-item"><span class="dot critical"></span> Critical Sybil (&gt;0.85)</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Panel: Risk Breakdown & Node Inspector -->
+            <aside class="sidebar-layout">
+                <!-- Sybil Risk Breakdown Card -->
+                <section class="card sidebar-card">
+                    <div class="card-header">
+                        <h2>Risk Distribution</h2>
+                    </div>
+
+                    <div class="risk-bars">
+                        <div class="risk-bar-item">
+                            <div class="risk-bar-info">
+                                <span>Low Risk</span>
+                                <span id="cnt-low">0</span>
+                            </div>
+                            <div class="bar-track"><div class="bar-fill low" id="fill-low" style="width: 0%"></div></div>
+                        </div>
+
+                        <div class="risk-bar-item">
+                            <div class="risk-bar-info">
+                                <span>Medium Risk</span>
+                                <span id="cnt-medium">0</span>
+                            </div>
+                            <div class="bar-track"><div class="bar-fill medium" id="fill-medium" style="width: 0%"></div></div>
+                        </div>
+
+                        <div class="risk-bar-item">
+                            <div class="risk-bar-info">
+                                <span>High Risk</span>
+                                <span id="cnt-high">0</span>
+                            </div>
+                            <div class="bar-track"><div class="bar-fill high" id="fill-high" style="width: 0%"></div></div>
+                        </div>
+
+                        <div class="risk-bar-item">
+                            <div class="risk-bar-info">
+                                <span>Critical Sybil</span>
+                                <span id="cnt-critical">0</span>
+                            </div>
+                            <div class="bar-track"><div class="bar-fill critical" id="fill-critical" style="width: 0%"></div></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Node Inspector Drawer Card -->
+                <section class="card sidebar-card inspector-card" id="inspector-card">
+                    <div class="card-header">
+                        <h2>Voter Node Inspector</h2>
+                        <span class="node-id-tag" id="inspect-node-id">Click a node on graph</span>
+                    </div>
+
+                    <div class="inspector-placeholder" id="inspect-placeholder">
+                        <div class="placeholder-icon">🔍</div>
+                        <p>Select any voter node on the co-voting graph canvas to inspect behavioral metrics and Sybil score details.</p>
+                    </div>
+
+                    <div class="inspector-details hidden" id="inspect-details">
+                        <div class="address-box">
+                            <span class="label">Wallet Address</span>
+                            <span class="value mono" id="inspect-address">0x...</span>
+                        </div>
+
+                        <div class="score-pill-container">
+                            <div class="score-pill" id="inspect-score-pill">
+                                <span class="score-title">Sybil Suspicion Score</span>
+                                <span class="score-num" id="inspect-score">0.0000</span>
+                            </div>
+                        </div>
+
+                        <div class="metrics-mini-grid">
+                            <div class="metric-box">
+                                <span class="m-label">Token Balance</span>
+                                <span class="m-value" id="inspect-vp">0.0</span>
+                            </div>
+                            <div class="metric-box">
+                                <span class="m-label">Account Age</span>
+                                <span class="m-value" id="inspect-age">0 days</span>
+                            </div>
+                            <div class="metric-box">
+                                <span class="m-label">Vote Choice Entropy</span>
+                                <span class="m-value" id="inspect-entropy">0.00</span>
+                            </div>
+                            <div class="metric-box">
+                                <span class="m-label">Avg Voting Latency</span>
+                                <span class="m-value" id="inspect-latency">0.0 hrs</span>
+                            </div>
+                        </div>
+
+                        <div class="votes-section">
+                            <h3>Recent Proposal Votes</h3>
+                            <div class="votes-list" id="inspect-votes-list"></div>
+                        </div>
+                    </div>
+                </section>
+            </aside>
+        </main>
+    </div>
+
+    <!-- App JavaScript -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
